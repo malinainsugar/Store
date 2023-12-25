@@ -1,0 +1,52 @@
+
+.card-btn {
+    font-family: var(--poppins);
+    color: #FFF;
+    font-size: 21px;
+    font-weight: 700;
+}
+
+.card-btn,
+.cart-quantity {
+    width: inherit;
+    padding: 9px 0;
+    background-color: #A558FF;
+    border-radius: 5px;
+    
+}
+
+.card-btn:hover {
+    background-color: #8E2EFF;
+    cursor: pointer;
+}
+
+.cart-quantity {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.cart-quantity-value,
+.cart-quantity-btn {
+    flex: 1;
+    height: inherit;
+    font-family: var(--poppins);
+    color: #FFF;
+    font-size: 21px;
+    font-weight: 700;
+    text-align: center;
+    padding: 0;
+}
+
+.cart-quantity-value:hover {
+    cursor: default;
+}
+
+.cart-quantity-btn {
+    background-color: #A558FF;
+}
+
+.cart-quantity-btn:hover {
+    cursor: pointer;
+    background-color: #A558FF;
+}

@@ -1,0 +1,114 @@
+
+
+
+.store-section {
+    width: calc(100% - 250px);
+    margin-left: 250px;
+    background-color: #121118;
+    text-align: center;
+    min-height: 100vh;
+}
+
+.title {
+    font-size: 80px;
+    letter-spacing: 8px;
+
+    color: #fff;
+    text-transform: uppercase;
+    padding-top: 50px;
+    margin-bottom: 80px;
+}
+
+.answ {
+    font-family: var(--poppins);
+    color: #FFF;
+    font-size: 21px;
+    font-weight: 400;
+}
+
+.categories-container {
+    margin: 0 auto;
+
+}
+
+.categories-container:not(:has(.card))::before {
+    content: 'Ничего не найдено';
+    color: #fff;
+    text-transform: uppercase;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    font-family: var(--poppins);
+}
+
+.category {
+    padding-left: 20px;
+}
+
+.category:not(:has(.card)) {
+    display: none;
+}
+
+.cards-container:not(:has(div)) {
+    display: none;
+}
+
+.category-name {
+    font-family: var(--poppins);
+    color: #FFF;
+    font-size: 21px;
+    font-weight: 400;
+    margin-bottom: 40px;
+    text-align: start;
+}
+
+/*--------Карточки товаров-----------*/
+
+.cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    column-gap: 30px;
+    width: 100%;
+    margin: 0 auto 120px auto;
+    overflow-x: visible;
+}
+
+.card {
+    width: 300px;
+    margin-bottom: 50px;
+    transition: 0.3s ease-out;
+    overflow-x: visible;
+    cursor: pointer;
+}
+
+.card-content {
+    border-radius: 5px;
+    background: #383546;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.card-preview {
+    width: 250px;
+    height: 250px;
+    padding: 10px 12px;
+    border-radius: 5px;
+    background: #4A4466;
+    margin-bottom: 16px;
+}
+
+.card-info {
+    font-family: var(--poppins);
+    color: #FFF;
+    font-size: 21px;
+
+    display: flex;
+    justify-content: space-between;
+}
+
+.card-price {
+    font-weight: 700;
+}
+
+
