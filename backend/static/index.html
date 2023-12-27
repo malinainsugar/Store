@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Магазин</title>
+    <link rel="stylesheet" href="./static/css/Main.css"/>
+    <link rel="stylesheet" href="./static/css/CardModal.css"/>
+    <link rel="stylesheet" href="./static/css/CartButton.css"/>
+    <link rel="stylesheet" href="./static/css/CartComponent.css"/>
+    <link rel="stylesheet" href="./static/css/Orders.css"/>
+    <link rel="stylesheet" href="./static/css/Store.css"/>
+    <link rel="stylesheet" href="./static/css/StoreSearchbar.css"/>
+  </head>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;200;300;400;500;600;700&family=Poppins:wght@100;200;300;400;500;600&display=swap');
+  </style>
+  <body>
+    <div id="root"></div>
+    <div id="modal-root"></div>
+    <script src="./static/node_modules/react/umd/react.development.js"></script>
+    <script src="./static/node_modules/react-query/dist/react-query.development.js"></script>
+    <script src="./static/node_modules/react-dom/umd/react-dom.development.js"></script>
+    <script src="./static/node_modules/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js" crossorigin="anonymous" integrity="sha384-sx7t4zI1QDIcQ1euJetm0tE6jJPjFI2hLj7+ReHpB2urydCmevhqf6CahWnNrLYN"></script>
+
+    <script type="text/babel" data-plugins="transform-react-jsx" data-presets="react">
+      const rootElement = document.getElementById('root');
+
+      const { QueryClient, QueryClientProvider, useQueryClient, useQuery, useMutation } = ReactQuery;
+      const { useState, useEffect, useCallback } = React;
+      const { createPortal } = ReactDOM;
+      const imageCard = './static/assets/card1.png'
+      const closeImg = './static/assets/close.svg'
+
+      const queryClient = new QueryClient();
+
+      const Info = () => {
+        const git = './static/assets/git.png'
+        const replit = './static/assets/replit.png'
+        return (
+          <div className="info">
+            <h2>Здравствуйте!</h2>
+            <p>Для этого задания я взяла за основу проект по другому предмету и поменяла его под требования.</p>
+            <p>Вся основная часть написана на реакте и перенесена в index.html, из-за этого все может немного тормозить.</p>
+            <p>Кнопка "Купить" в данный момент используется для создания заказа.</p>
+            <a className='link' href='https://github.com/malinainsugar/Store'><img src={git} width='40px'/>Гитхаб</a>
+            <a className='link' href='https://replit.com/join/siisbidggc-w4664586'><img src={replit} width='40px'/>Проект в replit</a>
+            <p>Трефелова Алина РИ-310944</p>
+          </div>
+        );
+      };
+
+      const cartCacheKey = 'cart';
+
+      const fetchCartData = async (userId) => {
+          try {
+            const response = await axios.get(`/users/${userId}/cart`);
+            return response.data;
+          } catch (error) {
+            throw new Error('Ошибка при получении данных о корзине');
+          }
+      };
+
+
+      const addToCartRequest = async ({ userId, productId }) => {
+          try {
+            const response = await axios.post(`/users/${userId}/add-to-cart/${productId}`);
+            return response.data;
+          } catch (error) {
+            throw new Error('Ошибка при добавлении товара в корзину');
+          }
+      };
+
+      const removeFromCartRequest = async ({ userId, productId }) => {
+          try {
+            const response = await axios.delete(`/users/${userId}/remove-from-cart/${productId}`);
+            return response.data;
+          } catch (error) {
+            throw new Error('Ошибка при удалении товара из корзины');
+          }
+      };
+
+      const clearCartRequest = async (userId) => {
+        try {
+          const response = await axios.delete(`/users/${userId}/clear-cart`);
+          return response.data;
+        } catch (error) {
+          throw new Error('Ошибка при очистке корзины');
+        }
+      };
+
+
+      const useCart = (userId) => {
+        const queryClient = useQueryClient();
+
+        const { data: cartData } = useQuery([cartCacheKey, userId], () => fetchCartData(userId));
+
+        const addToCartMutation = useMutation(addToCartRequest, {
+          onSuccess: () => {
+            queryClient.invalidateQueries([cartCacheKey, userId]);
+          },
+        });
+
+        const removeFromCartMutation = useMutation(removeFromCartRequest, {
+          onSuccess: () => {
+            queryClient.invalidateQueries([cartCacheKey, userId]);
+          },
+        });
+
+        const clearCartMutation = useMutation(clearCartRequest, {
+          onSuccess: () => {
+            queryClient.invalidateQueries([cartCacheKey, userId]);
+          },
+        });
+
+        const addToCart = async (productId) => {
+          try {
+            await addToCartMutation.mutateAsync({ userId, productId });
+          } catch (error) {
+            console.error('Ошибка при добавлении товара в корзину:', error);
+          }
+        };
+
+        const removeFromCart = async (productId) => {
+          try {
+            await removeFromCartMutation.mutateAsync({ userId, productId });
+          } catch (error) {
+            console.error('Ошибка при удалении товара из корзины:', error);
+          }
+        };
+
+        const clearCart = async () => {
+          try {
+            await clearCartMutation.mutateAsync(userId);
+          } catch (error) {
+            console.error('Ошибка при очистке корзины:', error);
+          }
+        };
+
+        return { cartData, addToCart, removeFromCart, clearCart };
+      };
+
+      const BuyButton = ({ userId, cartItems, onCartCleared }) => {
+        const handleBuyClick = () => {
+          const orderProducts = cartItems.map((cartItem) => ({
+            product_id: cartItem.product.id,
+            quantity: cartItem.quantity,
+          }));
+
+          const orderData = {
+            order_products: orderProducts,
+          };
+
+          axios.post(`/users/${userId}/orders/create`, orderData, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
+            .then((response) => {
+              console.log('Заказ создан успешно:', response.data);
+              onCartCleared();
+            })
+            .catch((error) => {
+              console.error('Ошибка при создании заказа:', error);
+            });
+        };
+
+        return (
+          <button className='buy-btn' onClick={handleBuyClick}>Купить</button>
+        );
+      };
+
+      const CartComponent = () => {
+        const userId = '1';
+        const [cartItems, setCartItems] = useState([]);
+        const { cartData } = useCart(userId);
+
+        useEffect(() => {
+          setCartItems(cartData || []);
+        }, [cartData]);
+
+        const handleCartCleared = () => {
+          setCartItems([]);
+        };
+
+        const handleQuantityChange = (productId, newQuantity) => {
+          if (newQuantity === 0) {
+            const updatedCartItems = cartItems.filter(item => item.product.id !== productId);
+            setCartItems(updatedCartItems);
+          } else {
+            const updatedCartItems = cartItems.map(item => {
+              if (item.product.id === productId) {
+                return { ...item, quantity: newQuantity };
+              }
+              return item;
+            });
+
+            setCartItems(updatedCartItems);
+          }
+        };
+
+        const totalAmount = cartItems.reduce((total, item) => {
+          return total + (item.product.price || 0) * (item.quantity || 0);
+        }, 0);
+
+        return (
+          <div className='cart-container'>
+            <ul className='cart-items-list'>
+              {cartItems.length > 0 ? (
+                cartItems.map((cartItem) => (
+                  <CartItem key={cartItem.product.id} cartItem={cartItem} onQuantityChange={handleQuantityChange} />
+                ))
+              ) : (
+                <p className="cart-empty">Корзина пуста</p>
+              )}
+            </ul>
+            <div className='bottom-panel'>
+              <p className='total-amount'>Общая сумма: {totalAmount} руб.</p>
+              <div className='btns-container'>
+                <ClearButton userId={userId} onCartCleared={handleCartCleared} />
+                <BuyButton userId={userId} cartItems={cartItems} onCartCleared={handleCartCleared} />
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+
+      const CartItem = ({ cartItem, onQuantityChange }) => {
+        return (
+            <li className="cart-item" key={cartItem.product.id}>
+                <div className="cart-item-card">
+                    <img className="cart-item-preview" src={imageCard} alt={cartItem.product.name} />
+                    <div className="cart-item-info">
+                        <span>{cartItem.product.name}</span>
+                        <span>{cartItem.quantity} шт.</span>
+                        <span>{cartItem.product.price * cartItem.quantity} ₽</span>
+                    </div>
+                </div>
+                <CartButton productId={cartItem.product.id} onQuantityChange={onQuantityChange} />
+            </li>
+        );
+    };
+
+      const ClearButton = ({ userId, onCartCleared }) => {
+        const { clearCart } = useCart(userId);
+
+        const handleClearClick = useCallback(async () => {
+          try {
+            await clearCart();
+            console.log('Корзина очищена успешно');
+            onCartCleared();
+          } catch (error) {
+            console.error('Ошибка при очистке корзины:', error);
+          }
+        }, [clearCart, onCartCleared]);
+
+        return (
+          <button className='clear-btn' onClick={handleClearClick}>Очистить корзину</button>
+        );
+      };
+
+      const CompleteButton = ({ orderId, onComplete }) => {
+        const userId = '1';
+        const handleComplete = async () => {
+            try {
+              await axios.put(`/users/${userId}/orders/${orderId}/complete`);
+              onComplete();
+            } catch (error) {
+              console.error('Ошибка при завершении заказа:', error);
+            }
+          };
+
+        return (
+            <button className='complete-btn' onClick={handleComplete}>Завершить заказ</button>
+        );
+    };
+
+      const Order = ({ order }) => {
+        return (
+          <li className="order" key={order.id}>
+          <div className="order-header">
+            <h3>Заказ #{order.id}</h3>
+            <div className={`order-status ${order.status === 'Активен' ? 'active' : 'completed'}`}>
+              {order.status}
+            </div>
+          </div>
+          <p>Дата и время: {order.date_time}</p>
+          <p>Сумма заказа: {order.total_amount} ₽</p>
+            
+            <h4>Товары в заказе:</h4>
+            <div className='order-product-list'>
+              {order.order_products.map((product, index) => (
+                <div key={index} className="order-product-card">
+                  <img className="order-preview" src={imageCard} alt={product.name} />
+                  <p>{product.name}</p>
+                  <p>{product.price} ₽</p>
+                  <p>Количество: {product.quantity}</p>
+                  <p>{product.category}</p>
+                </div>
+              ))}
+            </div>
+          </li>
+        );
+      };
+
+      const OrderHistory = () => {
+        const userId = '1';
+        const [orders, setOrders] = useState([]);
+
+        useEffect(() => {
+          const fetchOrders = async () => {
+            try {
+              const response = await axios.get(`/users/${userId}/orders`);
+              setOrders(response.data);
+            } catch (error) {
+              console.error('Ошибка при получении заказов:', error);
+            }
+          };
+
+          fetchOrders();
+        }, [userId]);
+
+        return (
+          <div className='orders-history'>
+            <ul className='orders-item-list'>
+              {[...orders].reverse().map((order, index) => (
+                <Order key={index} order={order} />
+              ))}
+            </ul>
+          </div>
+        );
+      };
+
+      const CartButton = ({ productId, onQuantityChange }) => {
+        const userId = '1';
+        const { addToCart, removeFromCart, cartData } = useCart(userId);
+
+        const [quantityInCart, setQuantityInCart] = useState(0);
+
+        useEffect(() => {
+          if (!cartData) return;
+        
+          const cartItem = cartData.find((item) => item.product_id === productId);
+        
+          if (cartItem && quantityInCart !== cartItem.quantity) {
+            setQuantityInCart(() => {
+              onQuantityChange?.(productId, cartItem.quantity);
+              return cartItem.quantity;
+            });
+          } else if (!cartItem && quantityInCart !== 0) {
+            setQuantityInCart(() => {
+              onQuantityChange?.(productId, 0);
+              return 0;
+            });
+          }
+        }, [cartData, onQuantityChange, productId, userId, quantityInCart]);
+
+        const onAddToCart = () => {
+          addToCart(productId);
+        };
+
+        const onRemoveFromCart = () => {
+          removeFromCart(productId);
+        };
+
+        return (
+          <>
+            {quantityInCart > 0 ? (
+              <div className="cart-quantity">
+                <button type="button" className="cart-quantity-btn" onClick={onRemoveFromCart}>
+                  -
+                </button>
+                <span className="cart-quantity-value">{quantityInCart}</span>
+                <button type="button" className="cart-quantity-btn" onClick={onAddToCart}>
+                  +
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="card-btn" onClick={onAddToCart}>
+                В корзину
+              </button>
+            )}
+          </>
+        );
+      };
+
+      const CardModal = ({ onClose, product }) => {
+        const modalRoot = document.getElementById('modal-root') || document.body;
+        const modalContainer = document.createElement('div');
+
+        useEffect(() => {
+            modalRoot.appendChild(modalContainer);
+        
+            return () => {
+              modalRoot.removeChild(modalContainer);
+            };
+          }, [modalContainer, modalRoot]);
+
+
+        return createPortal(
+            <div className="modal-overlay" onClick={onClose}>
+                <div className='modal-container' onClick={(e) => e.stopPropagation()}>
+                    <img className="modal-close" src={closeImg} onClick={onClose}/>
+                    <img className="modal-preview" src={imageCard} />
+                    <div className="modal-content">
+                        <span className="modal-name">{product.name}</span>
+                        <span className="modal-description">{product.description}</span>
+                        <div className='modal-info'>
+                            <span className="modal-category">{product.category}</span>
+                            <span className="modal-price">{product.price} ₽</span>
+                        </div>
+                        <CartButton productId={product.id} />
+                    </div>
+                </div>
+            </div>,
+            modalContainer
+        )
+    }
+
+      const Category = ({categoryName, products, searchQuery}) => {
+        return (
+            <div className="category">
+              <h3 className="category-name">{categoryName}</h3>
+                <div className="cards-container">
+                  {products.map((product) => {
+                    if ((product.category == categoryName) && product.name.toLowerCase().includes(searchQuery.toLowerCase()) ) {
+                      return <ProductCard key={product.id} product={product}/>
+                    }})}
+                </div>
+            </div>
+        )
+      }
+
+      const ProductCard = ({ product }) => {
+        const [isModalOpen, setIsModalOpen] = useState(false);
+
+        const openModal = () => {
+          setIsModalOpen(true);
+        };
+
+        const closeModal = () => {
+          setIsModalOpen(false);
+        };
+
+        return (
+          <>
+          <div className="card">
+            <div className="card-content" onClick={openModal}>
+              <img className="card-preview" src={imageCard} alt={product.name} />
+              <div className="card-info">
+                <span className="card-name">{product.name}</span>
+                <span className="card-price">{product.price} ₽</span>
+              </div>
+            </div>
+            <CartButton productId={product.id} />
+          </div>
+
+          {isModalOpen && <CardModal onClose={closeModal} product={product}/>}
+          </>
+        );
+      }
+
+      const ProductsList = ({ searchQuery, categoriesList, activeFilters }) => {
+        const [error, setError] = useState(null);
+        const [isLoaded, setIsLoaded] = useState(false);
+        const [products, setProducts] = useState([]);
+
+
+        useEffect(() => {
+          const fetchProducts = async () => {
+            try {
+              const response = await axios.get("http://localhost:8000/products");
+              
+              setIsLoaded(true);
+              setProducts(response.data);
+            } catch (error) {
+              setIsLoaded(true);
+              if (error instanceof Error) {
+                setError(error);
+              } else {
+                console.error('Произошла неизвестная ошибка:', error);
+              }
+            }
+          };
+          fetchProducts();
+        }, []);
+
+        if (error) {
+          return <div className='answ'>Ошибка: ${error.message}</div>;
+        } else if (!isLoaded) {
+          return <div className='answ'>Загрузка...</div>;
+        } else {
+          return (
+            <div className='categories-container'>
+              {categoriesList.map(category => {
+                if (activeFilters.length === 0 || activeFilters.includes(category)) {
+                  return (
+                    <Category
+                      key={category}
+                      categoryName={category}
+                      searchQuery={searchQuery}
+                      products={products}
+                    />
+                  );
+                }
+              })}
+            </div>
+          );
+        }
+      };
+
+      const StoreSearchbar = ({passFunction, filters, updateActiveFilters}) =>{
+        const [searchQuery, setSearchQuery] = useState('');
+
+        useEffect(()=>{
+            passFunction(searchQuery)
+        },[searchQuery])
+
+        const handleSearch = (e) => {
+            setSearchQuery(e.target.value);
+        };
+
+        function handleFilterClick(filter){
+            let filterEl = document.getElementById(filter)
+            
+            filterEl?.classList.toggle('filter-button-active');
+            
+            updateActiveFilters(filterEl?.id)
+        }
+
+
+        return(
+            <div className="store-searchbar-container">
+                <form className="store-searchbar">
+                    <input 
+                    className="store-searchbar-input" 
+                    type="text"
+                    value={searchQuery}
+                    placeholder="Введите название товара..."
+                    onInput={handleSearch} />
+                    <button className="store-form-button"></button>
+                </form>
+                <div className="searchbar-filters">
+                    {filters.map((filter, index)=>(
+                        <button className="filter-button" 
+                        key={index} 
+                        id={filter} 
+                        onClick={()=> handleFilterClick(filter)}
+                        >
+                            {filter}
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )
+        }
+
+      function Store () {
+          const [searchQuery, setSearchQuery] = useState('');
+          const categoriesList = ["Привилегии", "Чертежи", "Ресурсы", "Одежда", "Прочее"];
+          const [activeFilters, setActiveFilters] = useState([]);
+
+          function setSearch(query){
+              setSearchQuery(query);
+          }
+
+          function updateActiveFilters(filter) {
+              if (activeFilters.includes(filter)) {
+                  setActiveFilters(activeFilters.filter((category => category !== filter)))
+                  return;
+                }
+              setActiveFilters((filters) => [...filters, filter]);
+          }
+
+          return (
+              <section id="store" className="store-section">
+                  <StoreSearchbar passFunction={setSearch} filters={categoriesList} updateActiveFilters={updateActiveFilters}/>
+                  <ProductsList searchQuery={searchQuery} categoriesList={categoriesList} activeFilters={activeFilters}/>
+              </section>
+          )
+      }
+
+      const Content = ({ activeButton }) => {
+        switch (activeButton) {
+          case 'products':
+            return <Store/>;
+          case 'cart':
+            return <CartComponent/>;
+          case 'orderHistory':
+            return <OrderHistory/>;
+          case 'main':
+            return <Info/>;
+          default:
+            return <Info/>;
+        }
+      };
+
+      const Sidebar = ({ activeButton, onButtonClick }) => {
+        const buttons = [
+          { id: 'main', label: 'Главная' },
+          { id: 'products', label: 'Товары' },
+          { id: 'cart', label: 'Корзина' },
+          { id: 'orderHistory', label: 'История заказов' },
+        ];
+
+        return (
+          <div className="sidebar">
+            <ul className="sidebar-list">
+              {buttons.map((button) => (
+                <li key={button.id}>
+                  <button
+                    onClick={() => onButtonClick(button.id)}
+                    className={activeButton === button.id ? 'active sidebar-list-item' : 'sidebar-list-item'}>
+                    {button.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [activeButton, setActiveButton] = useState('main');
+
+        const handleButtonClick = (buttonName) => {
+          setActiveButton(buttonName);
+        };
+  
+      return (
+          <QueryClientProvider client={queryClient}>
+              <Sidebar activeButton={activeButton} onButtonClick={handleButtonClick} />
+              <Content activeButton={activeButton} />
+          </QueryClientProvider>
+      )
+    }
+
+      if (rootElement) {
+        ReactDOM.createRoot(rootElement).render(
+          React.createElement(React.StrictMode, null, React.createElement(App))
+        );
+      }
+    </script>
+  </body>
+</html>
+
