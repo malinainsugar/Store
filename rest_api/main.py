@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import SessionLocal, engine
 from . import models, crud
 
+
 from dotenv import load_dotenv
 import uvicorn
 
@@ -26,7 +27,6 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-FRONTEND_PATH = 'http://localhost:5173'
 
 
 async def get_db():
@@ -41,21 +41,19 @@ from .routers.products import router as products_router
 from .routers.users import router as users_router
 from .routers.cart import router as cart_router
 from .routers.orders import router as orders_router
-#from .routers.chat import router as chat_router
+from .routers.active_table import router as active_router
 
 
 app.include_router(products_router, tags=["Products"])
 app.include_router(users_router, tags=["Users"])
 app.include_router(cart_router, tags=["Cart"])
 app.include_router(orders_router, tags=["Orders"])
-#app.include_router(chat_router, tags=["Chat"])
-
-
+app.include_router(active_router, tags=["Active table"])
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, tags=["Front"])
 async def read_root():
     return HTMLResponse(content=open("static/index.html", "r", encoding="utf-8").read())
 

@@ -333,6 +333,33 @@
         );
       };
 
+      const ActiveOrders = () => {
+        const [orders, setOrders] = useState([]);
+
+        useEffect(() => {
+          const ws = new WebSocket('ws://' + window.location.host + '/ws/active_orders');
+
+          ws.onmessage = (event) => {
+              const ordersData = JSON.parse(event.data);
+              setOrders(ordersData);
+          };
+
+          return () => {
+              ws.close();
+          };
+      }, []);
+
+      return (
+          <div className='orders-history'>
+            <ul className='orders-item-list'>
+              {[...orders].reverse().map((order, index) => (
+                <Order key={index} order={order} />
+              ))}
+            </ul>
+          </div>
+        );
+      };
+
       const CartButton = ({ productId, onQuantityChange }) => {
         const userId = '1';
         const { addToCart, removeFromCart, cartData } = useCart(userId);
@@ -471,7 +498,7 @@
         useEffect(() => {
           const fetchProducts = async () => {
             try {
-              const response = await axios.get("http://localhost:8000/products");
+              const response = await axios.get("/products");
               
               setIsLoaded(true);
               setProducts(response.data);
@@ -592,6 +619,8 @@
             return <OrderHistory/>;
           case 'main':
             return <Info/>;
+          case 'activeOrders':
+            return <ActiveOrders/>
           default:
             return <Info/>;
         }
@@ -603,6 +632,7 @@
           { id: 'products', label: 'Товары' },
           { id: 'cart', label: 'Корзина' },
           { id: 'orderHistory', label: 'История заказов' },
+          { id: 'activeOrders', label: 'Активные заказы (ws)'}
         ];
 
         return (
