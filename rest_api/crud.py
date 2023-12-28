@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from typing import List
 from datetime import datetime
 
+
 from . import models, schemas
 
 
@@ -107,7 +108,37 @@ def get_user_cart(db: Session, item_id):
     return JSONResponse(cart)
 
 
+async def get_active_orders(db: Session):
+    """Метод для получения активных заказов о продуктах"""
 
+    orders = db.query(models.Orders).filter(models.Orders.status != 'Завершен').all()
+
+    result_orders = []
+
+    for order in orders:
+        order_dict = {
+            "id": order.id,
+            "date_time": order.date_time.strftime("%H:%M %d.%m.%Y"),
+            "user_id": order.user_id,
+            "status": order.status,
+            "total_amount": order.total_amount,
+            "order_products": []
+        }
+
+        for order_product in order.order_products:
+            product = db.query(models.Products).get(order_product.product_id)
+            if product:
+                order_dict["order_products"].append({
+                    "product_id": product.id,
+                    "name": product.name,
+                    "price": product.price,
+                    "quantity": order_product.quantity,
+                    "category": product.category
+                })
+
+        result_orders.append(order_dict)
+
+    return result_orders
 
 
 def get_all_orders_by_user(db: Session, user_id, isActives=False):
